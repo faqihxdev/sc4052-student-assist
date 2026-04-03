@@ -1,0 +1,28 @@
+# Dependencies
+**/node_modules
+
+# Environment
+.env
+.env.local
+
+# Database
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# Build output
+packages/client/dist
+
+# Bun
+*.lockb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Drizzle generated migrations (tracked separately if needed)
+# packages/server/drizzle/
