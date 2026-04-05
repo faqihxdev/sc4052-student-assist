@@ -66,6 +66,13 @@ export interface CardData {
   data: unknown;
 }
 
+export type ChatStreamEvent =
+  | { type: "tool-call"; toolName: string; args: unknown }
+  | { type: "tool-result"; toolName: string; result: unknown }
+  | { type: "text-delta"; text: string }
+  | { type: "done"; services_called: string[]; traces: ApiTrace[]; cards: CardData[] }
+  | { type: "error"; message: string };
+
 export interface HealthResponse {
   status: "ok";
   timestamp: string;
