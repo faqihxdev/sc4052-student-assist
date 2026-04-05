@@ -1,54 +1,108 @@
-import { MessageCircle, Send } from "lucide-react";
+import { useRef, useEffect } from "react";
+import {
+  MessageCircle,
+  Calendar,
+  CheckSquare,
+  Github,
+  Newspaper,
+  Cloud,
+  Trash2,
+} from "lucide-react";
+import { useChat } from "../hooks/useChat";
+import ChatInput from "../components/chat/ChatInput";
+import MessageBubble from "../components/chat/MessageBubble";
+
+const SUGGESTIONS = [
+  { text: "What's my day looking like?", icon: Calendar },
+  { text: "Show my pending tasks", icon: CheckSquare },
+  { text: "Summarize my GitHub activity", icon: Github },
+  { text: "What's trending in tech?", icon: Newspaper },
+  { text: "How's the weather today?", icon: Cloud },
+];
 
 export default function ChatPage() {
+  const { messages, isLoading, sendMessage, stopStreaming, clearMessages } =
+    useChat();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const isEmpty = messages.length === 0;
+
   return (
-    <div className="mx-auto flex h-full max-w-3xl flex-col px-4 py-6">
-      <div className="flex flex-1 flex-col items-center justify-center text-center">
-        <div className="mb-4 rounded-full bg-indigo-100 p-4">
-          <MessageCircle className="h-8 w-8 text-indigo-600" />
-        </div>
-        <h2 className="mb-2 text-xl font-semibold text-gray-900">
-          Welcome to StudentAssist
-        </h2>
-        <p className="mb-6 max-w-md text-gray-500">
-          Your personal AI assistant for managing classes, tasks, GitHub
-          projects, news, and weather. Try asking something like:
-        </p>
-        <div className="flex flex-wrap justify-center gap-2">
-          {[
-            "What's my day looking like?",
-            "Show my pending tasks",
-            "Summarize my GitHub activity",
-            "What's trending in tech?",
-          ].map((suggestion) => (
-            <button
-              key={suggestion}
-              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-50"
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
+    <div className="flex h-full flex-col">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto scrollbar-thin"
+      >
+        {isEmpty ? (
+          <WelcomeScreen onSuggestionClick={sendMessage} />
+        ) : (
+          <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
+            {messages.map((msg) => (
+              <MessageBubble key={msg.id} message={msg} />
+            ))}
+            <div ref={bottomRef} />
+          </div>
+        )}
       </div>
 
-      <div className="border-t border-gray-200 pt-4">
-        <div className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-3 shadow-sm focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
-          <input
-            type="text"
-            placeholder="Ask StudentAssist anything..."
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
-            disabled
-          />
+      {!isEmpty && (
+        <div className="flex justify-center py-2">
           <button
-            className="rounded-lg bg-indigo-600 p-2 text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
-            disabled
+            onClick={clearMessages}
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border-default)] bg-[var(--color-surface-overlay)] px-3 py-1 text-xs text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)] disabled:opacity-50"
           >
-            <Send className="h-4 w-4" />
+            <Trash2 className="h-3 w-3" />
+            Clear chat
           </button>
         </div>
-        <p className="mt-2 text-center text-xs text-gray-400">
-          Chat functionality coming in Phase 4
-        </p>
+      )}
+
+      <ChatInput
+        onSend={sendMessage}
+        onStop={stopStreaming}
+        isLoading={isLoading}
+      />
+    </div>
+  );
+}
+
+function WelcomeScreen({
+  onSuggestionClick,
+}: {
+  onSuggestionClick: (msg: string) => void;
+}) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center px-4 text-center">
+      <div className="mb-5 rounded-2xl bg-[var(--color-amber-subtle)] p-5">
+        <MessageCircle className="h-10 w-10 text-[var(--color-amber-accent)]" />
+      </div>
+      <h2 className="mb-2 text-2xl font-bold text-[var(--color-text-primary)]">
+        Welcome to StudentAssist
+      </h2>
+      <p className="mb-8 max-w-md text-[var(--color-text-secondary)]">
+        Your AI assistant for managing classes, tasks, GitHub projects, news,
+        and weather. Try one of these to get started:
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 max-w-2xl">
+        {SUGGESTIONS.map((s) => {
+          const Icon = s.icon;
+          return (
+            <button
+              key={s.text}
+              onClick={() => onSuggestionClick(s.text)}
+              className="group flex items-center gap-3 rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-raised)] px-4 py-3 text-left text-sm text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-border-accent)] hover:bg-[var(--color-amber-subtle)] hover:text-[var(--color-amber-accent)]"
+            >
+              <Icon className="h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-colors group-hover:text-[var(--color-amber-accent)]" />
+              <span>{s.text}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

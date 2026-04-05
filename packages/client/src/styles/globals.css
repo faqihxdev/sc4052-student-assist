@@ -1,15 +1,216 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap");
+
 @import "tailwindcss";
 
-:root {
-  --color-primary: #6366f1;
-  --color-primary-hover: #4f46e5;
+@theme {
+  --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-surface-base: #1a1816;
+  --color-surface-raised: #221f1d;
+  --color-surface-overlay: #2a2725;
+  --color-surface-elevated: #322f2c;
+  --color-surface-hover: #3a3533;
+
+  --color-border-default: #3a3533;
+  --color-border-subtle: #2e2b28;
+  --color-border-accent: #5c3d25;
+
+  --color-text-primary: #e8e0d8;
+  --color-text-secondary: #9a918a;
+  --color-text-muted: #6b6360;
+  --color-text-inverse: #1a1816;
+
+  --color-amber-accent: #d4915c;
+  --color-amber-hover: #e0a06a;
+  --color-amber-subtle: #3d2e22;
+  --color-amber-glow: #d4915c33;
+
+  --color-copper-500: #c27a4d;
+  --color-copper-600: #a86840;
+  --color-copper-warm: #4a3528;
+
+  --color-warm-50: #faf5f0;
+  --color-warm-100: #f0e8df;
+  --color-warm-200: #ddd0c3;
+  --color-warm-400: #b09882;
+  --color-warm-500: #8a7566;
+  --color-warm-600: #6b5d52;
+  --color-warm-700: #4a3f38;
+  --color-warm-800: #322b26;
+  --color-warm-900: #1f1b18;
+
+  --color-success: #6abf7b;
+  --color-success-dim: #2a3d2e;
+  --color-warning: #e0a040;
+  --color-warning-dim: #3d3420;
+  --color-error: #e06060;
+  --color-error-dim: #3d2020;
+
+  --color-card-calendar: #2a2535;
+  --color-card-calendar-border: #3d3550;
+  --color-card-calendar-accent: #8b7ec8;
+
+  --color-card-tasks: #222d28;
+  --color-card-tasks-border: #2e4038;
+  --color-card-tasks-accent: #6abf7b;
+
+  --color-card-github: #252525;
+  --color-card-github-border: #3a3a3a;
+  --color-card-github-accent: #b0b0b0;
+
+  --color-card-news: #2d2620;
+  --color-card-news-border: #4a3825;
+  --color-card-news-accent: #d4915c;
+
+  --color-card-weather: #202a30;
+  --color-card-weather-border: #2a3d48;
+  --color-card-weather-accent: #6ab0d4;
+
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-slide-up: slide-up 0.35s ease-out;
+  --animate-pulse-dot: pulse-dot 1.4s ease-in-out infinite;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse-dot {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
 }
 
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
-  font-family:
-    "Inter",
-    system-ui,
-    -apple-system,
-    sans-serif;
+  background-color: var(--color-surface-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-hover) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--color-surface-hover);
+  border-radius: 3px;
+}
+
+.prose-chat {
+  @apply text-sm leading-relaxed;
+  color: var(--color-text-primary);
+}
+
+.prose-chat p {
+  @apply mb-2 last:mb-0;
+}
+
+.prose-chat h1, .prose-chat h2, .prose-chat h3 {
+  @apply font-semibold mt-3 mb-1.5;
+  font-family: var(--font-display);
+  color: var(--color-warm-50);
+}
+
+.prose-chat h1 { @apply text-lg; }
+.prose-chat h2 { @apply text-base; }
+.prose-chat h3 { @apply text-sm font-semibold; }
+
+.prose-chat ul, .prose-chat ol {
+  @apply pl-5 mb-2 space-y-1;
+}
+
+.prose-chat ul { list-style-type: disc; }
+.prose-chat ol { list-style-type: decimal; }
+
+.prose-chat li {
+  @apply text-sm;
+  color: var(--color-text-primary);
+}
+
+.prose-chat li::marker {
+  color: var(--color-text-muted);
+}
+
+.prose-chat strong {
+  @apply font-semibold;
+  color: var(--color-warm-50);
+}
+
+.prose-chat a {
+  color: var(--color-amber-accent);
+  @apply underline underline-offset-2;
+}
+
+.prose-chat a:hover {
+  color: var(--color-amber-hover);
+}
+
+.prose-chat code {
+  background: var(--color-surface-overlay);
+  color: var(--color-amber-accent);
+  @apply rounded px-1.5 py-0.5 text-xs;
+  font-family: var(--font-mono);
+}
+
+.prose-chat pre {
+  background: var(--color-surface-overlay);
+  border: 1px solid var(--color-border-default);
+  @apply rounded-lg p-3 mb-2 overflow-x-auto;
+}
+
+.prose-chat pre code {
+  background: transparent;
+  color: var(--color-text-primary);
+  @apply p-0;
+}
+
+.prose-chat blockquote {
+  border-left: 3px solid var(--color-amber-accent);
+  padding-left: 0.75rem;
+  color: var(--color-text-secondary);
+  @apply italic my-2;
+}
+
+.prose-chat hr {
+  border-color: var(--color-border-subtle);
+  @apply my-3;
+}
+
+.prose-chat table {
+  @apply w-full text-sm border-collapse mb-2;
+}
+
+.prose-chat th {
+  background: var(--color-surface-overlay);
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-primary);
+  @apply px-3 py-1.5 text-left font-medium;
+}
+
+.prose-chat td {
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-primary);
+  @apply px-3 py-1.5;
 }

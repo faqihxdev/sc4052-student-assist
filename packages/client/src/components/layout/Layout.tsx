@@ -7,9 +7,9 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-[var(--color-surface-base)]">
       <Header />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto scrollbar-thin">{children}</main>
     </div>
   );
 }

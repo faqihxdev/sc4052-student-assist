@@ -5,16 +5,18 @@ export default function Header() {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
       isActive
-        ? "bg-indigo-100 text-indigo-700"
-        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+        ? "bg-[var(--color-amber-subtle)] text-[var(--color-amber-accent)]"
+        : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
     }`;
 
   return (
-    <header className="border-b border-gray-200 bg-white">
+    <header className="border-b border-[var(--color-border-default)] bg-[var(--color-surface-raised)]">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 text-indigo-600" />
-          <span className="text-lg font-semibold text-gray-900">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-amber-subtle)]">
+            <GraduationCap className="h-4.5 w-4.5 text-[var(--color-amber-accent)]" />
+          </div>
+          <span className="text-lg font-semibold text-[var(--color-text-primary)]">
             StudentAssist
           </span>
         </div>
