@@ -5,6 +5,14 @@ import { serveStatic } from "hono/bun";
 import type { HealthResponse } from "@studentassist/shared";
 import { handleError } from "./lib/errors";
 import { config } from "./lib/config";
+import tasksRoutes from "./routes/tasks";
+import weatherRoutes from "./routes/weather";
+import newsRoutes from "./routes/news";
+import githubRoutes from "./routes/github";
+import settingsRoutes from "./routes/settings";
+import authRoutes from "./routes/auth";
+import calendarRoutes from "./routes/calendar";
+import chatRoutes from "./routes/chat";
 
 const app = new Hono();
 
@@ -26,6 +34,15 @@ app.get("/api/v1/health", (c) => {
   };
   return c.json(response);
 });
+
+app.route("/api/v1/tasks", tasksRoutes);
+app.route("/api/v1/weather", weatherRoutes);
+app.route("/api/v1/news", newsRoutes);
+app.route("/api/v1/github", githubRoutes);
+app.route("/api/v1/settings", settingsRoutes);
+app.route("/api/v1/auth", authRoutes);
+app.route("/api/v1/calendar", calendarRoutes);
+app.route("/api/v1/chat", chatRoutes);
 
 app.onError((err, c) => handleError(err, c));
 

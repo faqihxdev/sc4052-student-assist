@@ -28,6 +28,8 @@ export const config = {
 
   openweathermapApiKey: envOptional("OPENWEATHERMAP_API_KEY"),
 
+  mockMode: (envOptional("MOCK_MODE") ?? "false").toLowerCase() === "true",
+
   nodeEnv: env("NODE_ENV", "development"),
   isProd: process.env.NODE_ENV === "production",
 } as const;
