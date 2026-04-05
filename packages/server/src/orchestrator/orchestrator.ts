@@ -28,7 +28,24 @@ Guidelines:
 - For task creation, confirm what was created. For updates, confirm what changed.
 - Be action-oriented: when the user asks you to create a task, event, etc., do it immediately using sensible defaults (medium priority, no due date) rather than asking for more details. Only ask for clarification if the request is truly ambiguous.
 - For weather: omit the city parameter to use the user's default city. Only specify a city if the user explicitly mentions one.
-- Today's date is ${new Date().toISOString().split("T")[0]}.`;
+- Today's date is ${new Date().toISOString().split("T")[0]}.
+
+Rich card placeholders:
+After writing the text for a service section, place the marker {{card:TYPE}} on its own line to embed the rich data card.
+TYPE must be one of: calendar, tasks, github, news, weather.
+Example:
+### Weather
+- Temperature: 25°C
+- Condition: Sunny
+
+{{card:weather}}
+
+### Calendar Events
+...
+
+{{card:calendar}}
+
+Always place exactly one marker per service that returned data. Never omit the marker.`;
 
 function getModel() {
   const apiKey = config.openaiApiKey;
@@ -89,9 +106,14 @@ export function chatStream(request: ChatRequest): ReadableStream<Uint8Array> {
     stopWhen: stepCountIs(5),
   });
 
+  let cardsSent = 0;
+
   const transform = new TransformStream<any, Uint8Array>({
     transform(chunk, controller) {
       switch (chunk.type) {
+        case "start-step":
+          controller.enqueue(formatSSE({ type: "step-start" }));
+          break;
         case "text-delta":
           controller.enqueue(formatSSE({ type: "text-delta", text: chunk.text }));
           break;
@@ -104,7 +126,7 @@ export function chatStream(request: ChatRequest): ReadableStream<Uint8Array> {
             })
           );
           break;
-        case "tool-result":
+        case "tool-result": {
           controller.enqueue(
             formatSSE({
               type: "tool-result",
@@ -112,6 +134,15 @@ export function chatStream(request: ChatRequest): ReadableStream<Uint8Array> {
               result: chunk.result,
             })
           );
+          const allCards = getCards();
+          for (let i = cardsSent; i < allCards.length; i++) {
+            controller.enqueue(formatSSE({ type: "card", card: allCards[i] }));
+          }
+          cardsSent = allCards.length;
+          break;
+        }
+        case "finish-step":
+          controller.enqueue(formatSSE({ type: "step-finish" }));
           break;
         case "finish":
           controller.enqueue(

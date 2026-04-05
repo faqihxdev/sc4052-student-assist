@@ -67,8 +67,11 @@ export interface CardData {
 }
 
 export type ChatStreamEvent =
+  | { type: "step-start" }
   | { type: "tool-call"; toolName: string; args: unknown }
   | { type: "tool-result"; toolName: string; result: unknown }
+  | { type: "card"; card: CardData }
+  | { type: "step-finish" }
   | { type: "text-delta"; text: string }
   | { type: "done"; services_called: string[]; traces: ApiTrace[]; cards: CardData[] }
   | { type: "error"; message: string };

@@ -7,20 +7,26 @@ import type {
 } from "@studentassist/shared";
 import { streamChat } from "../lib/api";
 
-export interface ToolStatus {
+export type AgentPhase = "idle" | "thinking" | "tools" | "streaming" | "done";
+
+export interface ToolStep {
   toolName: string;
-  status: "loading" | "done";
   service: string;
+  label: string;
+  status: "loading" | "done";
+  startedAt: number;
+  durationMs?: number;
 }
 
 export interface ChatMessage {
   id: string;
   role: ChatRole;
   content: string;
+  phase: AgentPhase;
   services?: string[];
   traces?: ApiTrace[];
   cards?: CardData[];
-  toolStatuses?: ToolStatus[];
+  toolSteps?: ToolStep[];
   isStreaming?: boolean;
 }
 
@@ -41,6 +47,23 @@ const TOOL_SERVICE_MAP: Record<string, string> = {
   get_weather_forecast: "Weather",
 };
 
+const TOOL_LABELS: Record<string, string> = {
+  get_todays_schedule: "Checking your calendar",
+  get_calendar_events: "Looking up calendar events",
+  find_free_time: "Finding free time slots",
+  create_calendar_event: "Creating calendar event",
+  list_tasks: "Fetching your tasks",
+  create_task: "Creating a new task",
+  update_task: "Updating task",
+  get_github_repos: "Loading GitHub repos",
+  get_repo_activity: "Fetching repo activity",
+  get_assigned_issues: "Checking assigned issues",
+  get_top_news: "Searching tech news",
+  search_news: "Searching news",
+  get_current_weather: "Getting current weather",
+  get_weather_forecast: "Fetching weather forecast",
+};
+
 let messageIdCounter = 0;
 function genId() {
   return `msg-${Date.now()}-${++messageIdCounter}`;
@@ -59,6 +82,7 @@ export function useChat() {
         id: genId(),
         role: "user",
         content: content.trim(),
+        phase: "done",
       };
 
       const assistantId = genId();
@@ -66,7 +90,8 @@ export function useChat() {
         id: assistantId,
         role: "assistant",
         content: "",
-        toolStatuses: [],
+        phase: "thinking",
+        toolSteps: [],
         isStreaming: true,
       };
 
@@ -93,7 +118,9 @@ export function useChat() {
 
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantId ? { ...m, isStreaming: false } : m
+            m.id === assistantId
+              ? { ...m, isStreaming: false, phase: "done" }
+              : m
           )
         );
       } catch (err: any) {
@@ -107,6 +134,7 @@ export function useChat() {
                     m.content ||
                     `Sorry, something went wrong: ${err.message}`,
                   isStreaming: false,
+                  phase: "done",
                 }
               : m
           )
@@ -125,46 +153,86 @@ export function useChat() {
         if (m.id !== id) return m;
 
         switch (event.type) {
-          case "text-delta":
-            return { ...m, content: m.content + event.text };
+          case "step-start":
+            return m;
 
           case "tool-call": {
             const service =
               TOOL_SERVICE_MAP[event.toolName] || event.toolName;
-            const existing = m.toolStatuses || [];
+            const label =
+              TOOL_LABELS[event.toolName] || `Using ${service}`;
+            const existing = m.toolSteps || [];
             const alreadyHas = existing.some(
               (t) => t.toolName === event.toolName
             );
             if (alreadyHas) return m;
             return {
               ...m,
-              toolStatuses: [
+              phase: "tools" as AgentPhase,
+              toolSteps: [
                 ...existing,
-                { toolName: event.toolName, status: "loading", service },
+                {
+                  toolName: event.toolName,
+                  service,
+                  label,
+                  status: "loading",
+                  startedAt: Date.now(),
+                },
               ],
             };
           }
 
           case "tool-result": {
-            const statuses = (m.toolStatuses || []).map((t) =>
-              t.toolName === event.toolName ? { ...t, status: "done" as const } : t
+            const now = Date.now();
+            const steps = (m.toolSteps || []).map((t) =>
+              t.toolName === event.toolName
+                ? {
+                    ...t,
+                    status: "done" as const,
+                    durationMs: now - t.startedAt,
+                  }
+                : t
             );
-            return { ...m, toolStatuses: statuses };
+            return { ...m, toolSteps: steps };
           }
 
-          case "done":
+          case "card": {
+            const existing = m.cards || [];
+            return { ...m, cards: [...existing, event.card] };
+          }
+
+          case "step-finish":
+            return m;
+
+          case "text-delta": {
+            const nextPhase: AgentPhase =
+              m.phase === "tools" || m.phase === "thinking"
+                ? "streaming"
+                : m.phase;
+            return {
+              ...m,
+              content: m.content + event.text,
+              phase: nextPhase,
+            };
+          }
+
+          case "done": {
+            const streamedCards = m.cards || [];
             return {
               ...m,
               services: event.services_called,
               traces: event.traces,
-              cards: event.cards,
+              cards: streamedCards.length > 0 ? streamedCards : event.cards,
+              phase: "done" as AgentPhase,
               isStreaming: false,
             };
+          }
 
           case "error":
             return {
               ...m,
               content: m.content || `Error: ${event.message}`,
+              phase: "done" as AgentPhase,
               isStreaming: false,
             };
 
