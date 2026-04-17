@@ -25,7 +25,7 @@ export function getMockTodaysEvents(): CalendarEvent[] {
   return [
     {
       id: "mock-1",
-      summary: "CZ4052 Cloud Computing Lecture",
+      summary: "SC4052 Cloud Computing Lecture",
       description: "Week 12: Microservices & Containerization",
       location: "LT19, North Spine",
       start: today(10, 0),
@@ -47,7 +47,7 @@ export function getMockTodaysEvents(): CalendarEvent[] {
     },
     {
       id: "mock-3",
-      summary: "TA Office Hours (CZ2005)",
+      summary: "TA Office Hours (SC1005)",
       description: null,
       location: "CCDS Lab 2",
       start: today(16, 0),
@@ -136,7 +136,7 @@ export function getMockRepos(): GitHubRepo[] {
       id: 1001,
       name: "cloud-computing-project",
       full_name: "alextan/cloud-computing-project",
-      description: "CZ4052 Cloud Computing final project: StudentAssist PA-as-a-Service",
+      description: "SC4052 Cloud Computing final project: StudentAssist PA-as-a-Service",
       html_url: "https://github.com/alextan/cloud-computing-project",
       language: "TypeScript",
       stargazers_count: 3,
