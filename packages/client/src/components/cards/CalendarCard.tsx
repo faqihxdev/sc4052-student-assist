@@ -65,7 +65,7 @@ function EventRow({ event }: { event: CalendarEvent }) {
     <div className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-white/[0.03]">
       <div className="mt-0.5 flex w-16 shrink-0 flex-col items-center rounded-md bg-[var(--color-card-calendar-accent)]/15 py-1 text-[var(--color-card-calendar-accent)]">
         <span className="text-xs font-semibold leading-tight">
-          {startTime || "—"}
+          {startTime || "–"}
         </span>
         {endTime && endTime !== startTime && (
           <span className="text-[10px] opacity-70 leading-tight">

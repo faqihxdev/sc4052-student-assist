@@ -117,14 +117,14 @@ export function getServiceStatuses(): ServiceStatus[] {
           service,
           connected: false,
           details:
-            "Google account not connected — click Connect to authorize",
+            "Google account not connected; click Connect to authorize",
         };
       }
       return {
         service,
         connected: false,
         details:
-          "Google OAuth not configured — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env",
+          "Google OAuth not configured; set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env",
       };
     }
 
@@ -132,7 +132,7 @@ export function getServiceStatuses(): ServiceStatus[] {
       return {
         service,
         connected: false,
-        details: "Not configured — using demo data until you add a key",
+        details: "Not configured; using demo data until you add a key",
       };
     }
 

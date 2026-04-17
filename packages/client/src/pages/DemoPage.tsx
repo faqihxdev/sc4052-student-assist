@@ -49,7 +49,7 @@ export default function DemoPage() {
         : result.calendar.reason ?? "calendar skipped";
       setToast({
         type: "success",
-        message: `Demo configured — ${result.tasks.reseeded} tasks reseeded; ${calendarMsg}.`,
+        message: `Demo configured: ${result.tasks.reseeded} tasks reseeded; ${calendarMsg}.`,
       });
     } catch (err: any) {
       setToast({
@@ -82,7 +82,7 @@ export default function DemoPage() {
         : result.calendar.reason ?? "calendar skipped";
       setToast({
         type: "success",
-        message: `Demo removed — ${result.tasks.wiped} tasks wiped; ${calendarMsg}.`,
+        message: `Demo removed: ${result.tasks.wiped} tasks wiped; ${calendarMsg}.`,
       });
     } catch (err: any) {
       setToast({
@@ -133,7 +133,7 @@ export default function DemoPage() {
             Your real calendar is never touched.
           </strong>{" "}
           Demo events are tagged with a private extended property that only
-          this app can see — invisible in the Google Calendar UI. Configure and
+          this app can see; invisible in the Google Calendar UI. Configure and
           Remove only touch events carrying that tag. Tasks live in the local
           database, so they're fully managed by this page.
         </div>
@@ -314,8 +314,8 @@ function FixtureReference() {
           <ul className="space-y-1.5 text-sm text-[var(--color-text-secondary)]">
             <li>Submit Algorithms problem set 4 · high · +3d</li>
             <li>Prepare Networks module presentation · high · +5d</li>
-            <li>Review PR #12 — streaming chat UI · medium · +1d</li>
-            <li>Read Chapter 12 — Graph theory basics · done</li>
+            <li>Review PR #12: streaming chat UI · medium · +1d</li>
+            <li>Read Chapter 12: Graph theory basics · done</li>
             <li>Set up CI with GitHub Actions · low · +10d</li>
             <li>Buy groceries for the week · low · today</li>
           </ul>
@@ -327,7 +327,7 @@ function FixtureReference() {
           <ul className="space-y-1.5 text-sm text-[var(--color-text-secondary)]">
             <li>Today 10:00 · Algorithms Lecture</li>
             <li>Today 14:00 · Group Standup</li>
-            <li>Tomorrow 09:00 · Study Group — Dynamic Programming</li>
+            <li>Tomorrow 09:00 · Study Group: Dynamic Programming</li>
             <li>Tomorrow 15:00 · Outdoor Run</li>
             <li>Tomorrow 20:00 · Review Meeting</li>
           </ul>

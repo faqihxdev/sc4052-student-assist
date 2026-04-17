@@ -60,7 +60,7 @@ type FixtureSpec = {
 const DEMO_EVENTS: FixtureSpec[] = [
   {
     summary: "Algorithms Lecture",
-    description: "Weekly lecture — dynamic programming and DP tables.",
+    description: "Weekly lecture on dynamic programming and DP tables.",
     location: "LT19",
     dayOffset: 0,
     startHour: 10,
@@ -77,9 +77,9 @@ const DEMO_EVENTS: FixtureSpec[] = [
     durationMinutes: 30,
   },
   {
-    summary: "Study Group — Dynamic Programming",
-    description: "Discussion session — rehash tutorial problems.",
-    location: "SCSE Lab 2",
+    summary: "Study Group: Dynamic Programming",
+    description: "Discussion session to rehash tutorial problems.",
+    location: "CCDS Lab 2",
     dayOffset: 1,
     startHour: 9,
     startMinute: 0,
@@ -87,7 +87,7 @@ const DEMO_EVENTS: FixtureSpec[] = [
   },
   {
     summary: "Outdoor Run",
-    description: "Park run — reschedulable if the weather turns.",
+    description: "Park run, reschedulable if the weather turns.",
     location: "NTU Sports Centre",
     dayOffset: 1,
     startHour: 15,
@@ -96,7 +96,7 @@ const DEMO_EVENTS: FixtureSpec[] = [
   },
   {
     summary: "Review Meeting",
-    description: "End-of-day project review — a good candidate to reschedule.",
+    description: "End-of-day project review, a good candidate to reschedule.",
     dayOffset: 1,
     startHour: 20,
     startMinute: 0,
@@ -284,7 +284,7 @@ export async function configureDemoState(): Promise<ConfigureResult> {
 
   if (useMockCalendar()) {
     result.calendar.reason =
-      "Calendar is in mock mode — events are static fixtures, no configuration needed.";
+      "Calendar is in mock mode; events are static fixtures, no configuration needed.";
     return result;
   }
 
@@ -352,7 +352,7 @@ export async function removeDemoState(): Promise<RemoveResult> {
 
   if (useMockCalendar()) {
     result.calendar.reason =
-      "Calendar is in mock mode — events are static fixtures, nothing to remove.";
+      "Calendar is in mock mode; events are static fixtures, nothing to remove.";
     return result;
   }
 

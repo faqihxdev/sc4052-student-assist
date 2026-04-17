@@ -233,7 +233,7 @@ export async function readArticle(input: {
 
   if (!url) {
     throw new Error(
-      "No URL to read — this story has no linked article. Try another story."
+      "No URL to read; this story has no linked article. Try another story."
     );
   }
 
@@ -245,7 +245,7 @@ export async function readArticle(input: {
   const contentType = res.headers.get("content-type") ?? "";
   if (!contentType.includes("text/html") && !contentType.includes("text/plain")) {
     throw new Error(
-      `Cannot read this link — it's ${contentType || "not HTML"} (likely a PDF, video, or binary).`
+      `Cannot read this link; it's ${contentType || "not HTML"} (likely a PDF, video, or binary).`
     );
   }
 

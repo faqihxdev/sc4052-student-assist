@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Loader2,
   Check,
@@ -112,7 +112,7 @@ function ArgPills({ input }: { input: unknown }) {
 }
 
 function formatArgValue(v: unknown): string {
-  if (v === null || v === undefined) return "—";
+  if (v === null || v === undefined) return "–";
   if (typeof v === "string") {
     if (v.length > 40) return `"${v.slice(0, 37)}…"`;
     return `"${v}"`;
@@ -132,13 +132,25 @@ export default function ToolSegment({ segment }: Props) {
   const liveElapsedMs = useElapsed(segment.startedAt, isLoading);
   const displayedMs = isLoading ? liveElapsedMs : segment.durationMs;
 
-  const canExpand =
-    !isLoading &&
-    (segment.output !== undefined || segment.card !== undefined);
+  const hasContent =
+    segment.output !== undefined || segment.card !== undefined;
+  const canExpand = !isLoading && hasContent;
 
   const CardComp = segment.card
     ? CARD_COMPONENT[segment.card.type]
     : undefined;
+
+  // Auto-expand the first time a custom card becomes available so rich
+  // results (calendar, tasks, weather, …) stay visible by default. Raw-JSON
+  // tool calls (e.g. list_tools / other meta-tools) intentionally stay
+  // collapsed until the user clicks to inspect them.
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!isLoading && segment.card && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
+      setOpen(true);
+    }
+  }, [isLoading, segment.card]);
 
   return (
     <div className="tool-segment rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] overflow-hidden">
@@ -203,14 +215,13 @@ export default function ToolSegment({ segment }: Props) {
         </div>
       </button>
 
-      {/* Card (inline, always visible when present) */}
-      {CardComp && segment.card && (
+      {/* Expandable body: custom card when available, otherwise raw JSON output */}
+      {open && CardComp && segment.card && (
         <div className="border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-base)] p-3">
           <CardComp data={segment.card.data} />
         </div>
       )}
 
-      {/* Expandable raw output (for debugging / meta-tool outputs without cards) */}
       {open && segment.output !== undefined && !segment.card && (
         <div className="border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-base)] p-3">
           <pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words rounded-md bg-[var(--color-surface-overlay)] p-2 text-[11px] font-mono text-[var(--color-text-secondary)]">

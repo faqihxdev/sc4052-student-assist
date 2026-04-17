@@ -100,7 +100,7 @@ app.get("/google/status", (c) => {
     return c.json({
       connected: false,
       configured: true,
-      message: "Google account not connected — click Connect to authorize",
+      message: "Google account not connected; click Connect to authorize",
     });
   }
 

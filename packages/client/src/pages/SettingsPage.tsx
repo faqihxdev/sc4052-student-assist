@@ -439,7 +439,7 @@ function BuiltInCard({
       </div>
       <div className="mt-4">
         <div className="rounded-lg bg-[var(--color-surface-overlay)] px-4 py-2 text-sm text-[var(--color-text-muted)]">
-          {details || "Built-in — no configuration needed"}
+          {details || "Built-in, no configuration needed"}
         </div>
       </div>
     </div>

@@ -31,20 +31,20 @@ export const DEMO_TASKS = [
   },
   {
     title: "Prepare Networks module presentation",
-    description: "Group slides on TCP congestion control — 15 min slot",
+    description: "Group slides on TCP congestion control, 15 min slot",
     status: "pending" as const,
     priority: "high" as const,
     due_date: daysFromNow(5),
   },
   {
-    title: "Review PR #12 — streaming chat UI",
+    title: "Review PR #12: streaming chat UI",
     description: "Code review on studentassist-platform repo",
     status: "in_progress" as const,
     priority: "medium" as const,
     due_date: daysFromNow(1),
   },
   {
-    title: "Read Chapter 12 — Graph theory basics",
+    title: "Read Chapter 12: Graph theory basics",
     description: "BFS/DFS refresher and connectivity proofs",
     status: "completed" as const,
     priority: "medium" as const,
