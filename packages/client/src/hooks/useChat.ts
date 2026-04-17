@@ -7,30 +7,41 @@ import type {
 } from "@studentassist/shared";
 import { streamChat } from "../lib/api";
 
-export type AgentPhase = "idle" | "thinking" | "tools" | "streaming" | "done";
+export type AgentPhase = "idle" | "thinking" | "working" | "done";
 
-export interface ToolStep {
-  toolName: string;
-  service: string;
-  label: string;
-  status: "loading" | "done";
-  startedAt: number;
-  durationMs?: number;
-}
+export type AssistantSegment =
+  | {
+      kind: "text";
+      id: string;
+      content: string;
+    }
+  | {
+      kind: "tool";
+      toolCallId: string;
+      toolName: string;
+      input: unknown;
+      status: "loading" | "done" | "error";
+      output?: unknown;
+      card?: CardData;
+      startedAt: number;
+      durationMs?: number;
+    };
 
 export interface ChatMessage {
   id: string;
   role: ChatRole;
+  /** For user: the raw message. For assistant: a concatenated plain-text view
+   *  (derived from text segments) used for LLM history on subsequent turns. */
   content: string;
+  segments?: AssistantSegment[];
   phase: AgentPhase;
   services?: string[];
   traces?: ApiTrace[];
-  cards?: CardData[];
-  toolSteps?: ToolStep[];
   isStreaming?: boolean;
 }
 
-const TOOL_SERVICE_MAP: Record<string, string> = {
+export const TOOL_SERVICE_MAP: Record<string, string> = {
+  list_tools_for_domain: "Agent",
   get_todays_schedule: "Calendar",
   get_calendar_events: "Calendar",
   find_free_time: "Calendar",
@@ -47,22 +58,14 @@ const TOOL_SERVICE_MAP: Record<string, string> = {
   get_weather_forecast: "Weather",
 };
 
-const TOOL_LABELS: Record<string, string> = {
-  get_todays_schedule: "Checking your calendar",
-  get_calendar_events: "Looking up calendar events",
-  find_free_time: "Finding free time slots",
-  create_calendar_event: "Creating calendar event",
-  list_tasks: "Fetching your tasks",
-  create_task: "Creating a new task",
-  update_task: "Updating task",
-  get_github_repos: "Loading GitHub repos",
-  get_repo_activity: "Fetching repo activity",
-  get_assigned_issues: "Checking assigned issues",
-  get_top_news: "Searching tech news",
-  search_news: "Searching news",
-  get_current_weather: "Getting current weather",
-  get_weather_forecast: "Fetching weather forecast",
-};
+function segmentsToContent(segments: AssistantSegment[] | undefined): string {
+  if (!segments) return "";
+  return segments
+    .filter((s): s is Extract<AssistantSegment, { kind: "text" }> => s.kind === "text")
+    .map((s) => s.content)
+    .join("\n\n")
+    .trim();
+}
 
 let messageIdCounter = 0;
 function genId() {
@@ -90,8 +93,8 @@ export function useChat() {
         id: assistantId,
         role: "assistant",
         content: "",
+        segments: [],
         phase: "thinking",
-        toolSteps: [],
         isStreaming: true,
       };
 
@@ -100,7 +103,14 @@ export function useChat() {
 
       const history = messages
         .filter((m) => m.role === "user" || m.role === "assistant")
-        .map((m) => ({ role: m.role, content: m.content }));
+        .map((m) => ({
+          role: m.role,
+          content:
+            m.role === "assistant"
+              ? segmentsToContent(m.segments) || m.content
+              : m.content,
+        }))
+        .filter((m) => m.content.length > 0);
 
       const abortController = new AbortController();
       abortRef.current = abortController;
@@ -117,11 +127,16 @@ export function useChat() {
         }
 
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? { ...m, isStreaming: false, phase: "done" }
-              : m
-          )
+          prev.map((m) => {
+            if (m.id !== assistantId) return m;
+            const finalContent = segmentsToContent(m.segments);
+            return {
+              ...m,
+              content: finalContent || m.content,
+              isStreaming: false,
+              phase: "done",
+            };
+          })
         );
       } catch (err: any) {
         if (err.name === "AbortError") return;
@@ -130,9 +145,14 @@ export function useChat() {
             m.id === assistantId
               ? {
                   ...m,
-                  content:
-                    m.content ||
-                    `Sorry, something went wrong: ${err.message}`,
+                  segments: [
+                    ...(m.segments ?? []),
+                    {
+                      kind: "text",
+                      id: "err",
+                      content: `Sorry, something went wrong: ${err.message}`,
+                    },
+                  ],
                   isStreaming: false,
                   phase: "done",
                 }
@@ -151,78 +171,107 @@ export function useChat() {
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== id) return m;
+        const segments = m.segments ? [...m.segments] : [];
 
         switch (event.type) {
           case "step-start":
-            return m;
-
-          case "tool-call": {
-            const service =
-              TOOL_SERVICE_MAP[event.toolName] || event.toolName;
-            const label =
-              TOOL_LABELS[event.toolName] || `Using ${service}`;
-            const existing = m.toolSteps || [];
-            const alreadyHas = existing.some(
-              (t) => t.toolName === event.toolName
-            );
-            if (alreadyHas) return m;
-            return {
-              ...m,
-              phase: "tools" as AgentPhase,
-              toolSteps: [
-                ...existing,
-                {
-                  toolName: event.toolName,
-                  service,
-                  label,
-                  status: "loading",
-                  startedAt: Date.now(),
-                },
-              ],
-            };
-          }
-
-          case "tool-result": {
-            const now = Date.now();
-            const steps = (m.toolSteps || []).map((t) =>
-              t.toolName === event.toolName
-                ? {
-                    ...t,
-                    status: "done" as const,
-                    durationMs: now - t.startedAt,
-                  }
-                : t
-            );
-            return { ...m, toolSteps: steps };
-          }
-
-          case "card": {
-            const existing = m.cards || [];
-            return { ...m, cards: [...existing, event.card] };
-          }
-
           case "step-finish":
             return m;
 
+          case "text-start": {
+            segments.push({
+              kind: "text",
+              id: event.id,
+              content: "",
+            });
+            return { ...m, segments, phase: "working" };
+          }
+
           case "text-delta": {
-            const nextPhase: AgentPhase =
-              m.phase === "tools" || m.phase === "thinking"
-                ? "streaming"
-                : m.phase;
-            return {
-              ...m,
-              content: m.content + event.text,
-              phase: nextPhase,
-            };
+            const idx = segments.findIndex(
+              (s) => s.kind === "text" && s.id === event.id
+            );
+            if (idx >= 0 && segments[idx].kind === "text") {
+              const prevSeg = segments[idx] as Extract<
+                AssistantSegment,
+                { kind: "text" }
+              >;
+              segments[idx] = {
+                ...prevSeg,
+                content: prevSeg.content + event.text,
+              };
+            } else {
+              // Fallback: text-delta without matching text-start.
+              segments.push({
+                kind: "text",
+                id: event.id,
+                content: event.text,
+              });
+            }
+            return { ...m, segments, phase: "working" };
+          }
+
+          case "text-end":
+            return m;
+
+          case "tool-call": {
+            segments.push({
+              kind: "tool",
+              toolCallId: event.toolCallId,
+              toolName: event.toolName,
+              input: event.input,
+              status: "loading",
+              startedAt: Date.now(),
+            });
+            return { ...m, segments, phase: "working" };
+          }
+
+          case "tool-result": {
+            const idx = segments.findIndex(
+              (s) => s.kind === "tool" && s.toolCallId === event.toolCallId
+            );
+            if (idx >= 0 && segments[idx].kind === "tool") {
+              const prevSeg = segments[idx] as Extract<
+                AssistantSegment,
+                { kind: "tool" }
+              >;
+              const output = event.output as any;
+              const isError =
+                output && typeof output === "object" && "error" in output;
+              segments[idx] = {
+                ...prevSeg,
+                status: isError ? "error" : "done",
+                output: event.output,
+                durationMs: Date.now() - prevSeg.startedAt,
+              };
+            }
+            return { ...m, segments };
+          }
+
+          case "card": {
+            const idx = segments.findIndex(
+              (s) => s.kind === "tool" && s.toolCallId === event.toolCallId
+            );
+            if (idx >= 0 && segments[idx].kind === "tool") {
+              const prevSeg = segments[idx] as Extract<
+                AssistantSegment,
+                { kind: "tool" }
+              >;
+              segments[idx] = { ...prevSeg, card: event.card };
+            }
+            // Let the reminders hook know it should re-read tasks and
+            // schedule any new notifications.
+            if (event.card?.type === "tasks" && typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("tasks-updated"));
+            }
+            return { ...m, segments };
           }
 
           case "done": {
-            const streamedCards = m.cards || [];
             return {
               ...m,
               services: event.services_called,
               traces: event.traces,
-              cards: streamedCards.length > 0 ? streamedCards : event.cards,
               phase: "done" as AgentPhase,
               isStreaming: false,
             };
@@ -231,7 +280,14 @@ export function useChat() {
           case "error":
             return {
               ...m,
-              content: m.content || `Error: ${event.message}`,
+              segments: [
+                ...segments,
+                {
+                  kind: "text",
+                  id: "err",
+                  content: `Error: ${event.message}`,
+                },
+              ],
               phase: "done" as AgentPhase,
               isStreaming: false,
             };

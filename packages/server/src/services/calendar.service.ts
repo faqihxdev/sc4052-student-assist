@@ -1,13 +1,43 @@
 import { google, calendar_v3 } from "googleapis";
 import { config } from "../lib/config";
 import { AppError } from "../lib/errors";
-import { getSetting } from "./settings.service";
+import { getSetting, deleteSetting } from "./settings.service";
 import {
   getMockTodaysEvents,
   getMockEvents,
   getMockFreeBusy,
   getMockCreateEvent,
 } from "../lib/mock-data";
+
+/**
+ * Detects Google's "invalid_grant" error (refresh token expired/revoked) and
+ * wraps it in a friendly AppError. Also clears the stale token from storage so
+ * the Settings page correctly reflects "disconnected".
+ *
+ * Common causes of invalid_grant:
+ *  - OAuth consent screen is in "Testing" mode (refresh tokens expire after 7 days).
+ *  - User revoked the app at https://myaccount.google.com/permissions.
+ *  - Client secret was rotated.
+ */
+function isInvalidGrantError(err: any): boolean {
+  const msg = (err?.response?.data?.error ?? err?.message ?? "").toString();
+  return msg.includes("invalid_grant");
+}
+
+async function withAuthHandling<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err: any) {
+    if (isInvalidGrantError(err)) {
+      deleteSetting("google_oauth_token");
+      throw new AppError(
+        401,
+        "Google Calendar access expired (invalid_grant). This usually means your OAuth consent screen is still in 'Testing' mode, where refresh tokens expire after 7 days. Go to Settings and click 'Connect Google' to re-authorize, or publish your OAuth consent screen in Google Cloud Console."
+      );
+    }
+    throw err;
+  }
+}
 
 function useMockCalendar(): boolean {
   if (config.mockMode) return true;
@@ -84,20 +114,22 @@ export async function listEvents(
 ): Promise<CalendarEvent[]> {
   if (useMockCalendar()) return getMockEvents(timeMin, timeMax);
 
-  const calendar = getAuthenticatedCalendar();
+  return withAuthHandling(async () => {
+    const calendar = getAuthenticatedCalendar();
 
-  const params: calendar_v3.Params$Resource$Events$List = {
-    calendarId: "primary",
-    singleEvents: true,
-    orderBy: "startTime",
-    maxResults,
-  };
+    const params: calendar_v3.Params$Resource$Events$List = {
+      calendarId: "primary",
+      singleEvents: true,
+      orderBy: "startTime",
+      maxResults,
+    };
 
-  if (timeMin) params.timeMin = timeMin;
-  if (timeMax) params.timeMax = timeMax;
+    if (timeMin) params.timeMin = timeMin;
+    if (timeMax) params.timeMax = timeMax;
 
-  const res = await calendar.events.list(params);
-  return (res.data.items ?? []).map(mapEvent);
+    const res = await calendar.events.list(params);
+    return (res.data.items ?? []).map(mapEvent);
+  });
 }
 
 export async function getTodaysEvents(): Promise<CalendarEvent[]> {
@@ -124,39 +156,41 @@ export interface FreeBusyResult {
 export async function getFreeBusy(date: string): Promise<FreeBusyResult> {
   if (useMockCalendar()) return getMockFreeBusy(date);
 
-  const calendar = getAuthenticatedCalendar();
+  return withAuthHandling(async () => {
+    const calendar = getAuthenticatedCalendar();
 
-  const dayStart = new Date(date);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(date);
-  dayEnd.setHours(23, 59, 59, 999);
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
 
-  const res = await calendar.freebusy.query({
-    requestBody: {
-      timeMin: dayStart.toISOString(),
-      timeMax: dayEnd.toISOString(),
-      items: [{ id: "primary" }],
-    },
+    const res = await calendar.freebusy.query({
+      requestBody: {
+        timeMin: dayStart.toISOString(),
+        timeMax: dayEnd.toISOString(),
+        items: [{ id: "primary" }],
+      },
+    });
+
+    const busySlots: FreeBusySlot[] = (
+      res.data.calendars?.primary?.busy ?? []
+    ).map((b) => ({
+      start: b.start ?? "",
+      end: b.end ?? "",
+    }));
+
+    const freeSlots = computeFreeSlots(
+      dayStart.toISOString(),
+      dayEnd.toISOString(),
+      busySlots
+    );
+
+    return {
+      date,
+      busy: busySlots,
+      free: freeSlots,
+    };
   });
-
-  const busySlots: FreeBusySlot[] = (
-    res.data.calendars?.primary?.busy ?? []
-  ).map((b) => ({
-    start: b.start ?? "",
-    end: b.end ?? "",
-  }));
-
-  const freeSlots = computeFreeSlots(
-    dayStart.toISOString(),
-    dayEnd.toISOString(),
-    busySlots
-  );
-
-  return {
-    date,
-    busy: busySlots,
-    free: freeSlots,
-  };
 }
 
 function computeFreeSlots(
@@ -201,18 +235,20 @@ export interface CreateEventInput {
 export async function createEvent(input: CreateEventInput): Promise<CalendarEvent> {
   if (useMockCalendar()) return getMockCreateEvent(input);
 
-  const calendar = getAuthenticatedCalendar();
+  return withAuthHandling(async () => {
+    const calendar = getAuthenticatedCalendar();
 
-  const res = await calendar.events.insert({
-    calendarId: "primary",
-    requestBody: {
-      summary: input.summary,
-      description: input.description,
-      location: input.location,
-      start: { dateTime: input.start },
-      end: { dateTime: input.end },
-    },
+    const res = await calendar.events.insert({
+      calendarId: "primary",
+      requestBody: {
+        summary: input.summary,
+        description: input.description,
+        location: input.location,
+        start: { dateTime: input.start },
+        end: { dateTime: input.end },
+      },
+    });
+
+    return mapEvent(res.data);
   });
-
-  return mapEvent(res.data);
 }

@@ -12,6 +12,8 @@ interface RepoItem {
 }
 
 interface ActivityData {
+  owner?: string;
+  repo?: string;
   commits?: Array<{ sha?: string; message?: string; author?: string; date?: string; html_url?: string }>;
   pull_requests?: Array<{ title?: string; number?: number; state?: string; html_url?: string; user?: string }>;
   issues?: Array<{ title?: string; number?: number; state?: string; html_url?: string; user?: string }>;
@@ -118,6 +120,9 @@ function RepoList({ repos }: { repos: RepoItem[] }) {
 }
 
 function ActivitySummary({ data }: { data: ActivityData }) {
+  const repoLabel = data.owner && data.repo ? `${data.owner}/${data.repo}` : null;
+  const repoUrl = repoLabel ? `https://github.com/${repoLabel}` : null;
+
   return (
     <div className="rounded-xl border border-[var(--color-card-github-border)] bg-[var(--color-card-github)] overflow-hidden">
       <div className="flex items-center gap-2 border-b border-[var(--color-card-github-border)] px-4 py-2.5">
@@ -125,6 +130,16 @@ function ActivitySummary({ data }: { data: ActivityData }) {
         <span className="text-xs font-semibold text-[var(--color-card-github-accent)] uppercase tracking-wide">
           Activity
         </span>
+        {repoLabel && (
+          <a
+            href={repoUrl!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-amber-accent)] font-mono"
+          >
+            {repoLabel}
+          </a>
+        )}
       </div>
       <div className="p-4 space-y-3">
         {data.commits && data.commits.length > 0 && (

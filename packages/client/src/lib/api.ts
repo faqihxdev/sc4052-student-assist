@@ -2,6 +2,7 @@ import type {
   ChatRequest,
   ChatStreamEvent,
   ServiceStatus,
+  Task,
 } from "@studentassist/shared";
 
 const BASE_URL = "/api/v1";
@@ -46,6 +47,10 @@ export async function disconnectGoogle(): Promise<void> {
 
 export function getGoogleAuthUrl(): string {
   return `${BASE_URL}/auth/google`;
+}
+
+export async function fetchTasks(): Promise<Task[]> {
+  return apiFetch<Task[]>("/tasks");
 }
 
 export async function* streamChat(

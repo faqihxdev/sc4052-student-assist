@@ -1,4 +1,4 @@
-import { CheckSquare, Circle, Clock, AlertTriangle } from "lucide-react";
+import { CheckSquare, Circle, Clock, AlertTriangle, Bell } from "lucide-react";
 
 interface TaskItem {
   id?: number;
@@ -6,6 +6,7 @@ interface TaskItem {
   status?: string;
   priority?: string;
   due_date?: string | null;
+  reminder_at?: string | null;
 }
 
 interface TaskCardProps {
@@ -35,6 +36,24 @@ function formatDueDate(dateStr?: string | null): string {
   if (diffDays === 0) return "Due today";
   if (diffDays === 1) return "Due tomorrow";
   return `Due in ${diffDays}d`;
+}
+
+function formatReminder(iso?: string | null): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const diffSec = Math.round((t - Date.now()) / 1000);
+  if (diffSec < -60) return "reminder missed";
+  if (diffSec < 0) return "reminder now";
+  if (diffSec < 60) return `in ${diffSec}s`;
+  if (diffSec < 3600) return `in ${Math.round(diffSec / 60)}m`;
+  if (diffSec < 86400) return `in ${Math.round(diffSec / 3600)}h`;
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export default function TaskCard({ data }: TaskCardProps) {
@@ -70,6 +89,15 @@ export default function TaskCard({ data }: TaskCardProps) {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {task.reminder_at && task.status !== "completed" && (
+                <span
+                  className="inline-flex items-center gap-1 text-xs text-[var(--color-card-tasks-accent)]"
+                  title={`Reminder at ${new Date(task.reminder_at).toLocaleString()}`}
+                >
+                  <Bell className="h-3 w-3" />
+                  {formatReminder(task.reminder_at)}
+                </span>
+              )}
               {task.due_date && (
                 <span className="inline-flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
                   {task.due_date && new Date(task.due_date) < new Date() && task.status !== "completed" && (

@@ -12,6 +12,7 @@ export const tasks = sqliteTable("tasks", {
     .notNull()
     .default("medium"),
   due_date: text("due_date"),
+  reminder_at: text("reminder_at"),
   created_at: text("created_at")
     .notNull()
     .default(sql`(CURRENT_TIMESTAMP)`),

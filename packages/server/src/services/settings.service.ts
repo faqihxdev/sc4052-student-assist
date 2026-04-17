@@ -107,13 +107,33 @@ export function getServiceStatuses(): ServiceStatus[] {
       return { service, connected: true, details: "Configured via environment variable" };
     }
 
-    // Fallback mock: service returns mock data when unconfigured
-    if (service === "calendar" || service === "github" || service === "weather") {
-      return { service, connected: true, details: "Using demo data (no API key configured)" };
+    // No real credentials. Report this honestly so the UI shows the correct
+    // connect/configure button. The services themselves may still serve demo
+    // data at call time, but from a Settings perspective they are NOT
+    // connected.
+    if (service === "calendar") {
+      if (config.googleClientId && config.googleClientSecret) {
+        return {
+          service,
+          connected: false,
+          details:
+            "Google account not connected — click Connect to authorize",
+        };
+      }
+      return {
+        service,
+        connected: false,
+        details:
+          "Google OAuth not configured — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env",
+      };
     }
 
-    if (service === "calendar" && config.googleClientId && config.googleClientSecret) {
-      return { service, connected: false, details: "Google account not connected — authorize in Settings" };
+    if (service === "github" || service === "weather") {
+      return {
+        service,
+        connected: false,
+        details: "Not configured — using demo data until you add a key",
+      };
     }
 
     return { service, connected: false, details: "Not configured" };

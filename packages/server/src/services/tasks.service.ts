@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { tasks } from "../db/schema";
-import { eq, and, lte } from "drizzle-orm";
+import { eq, and, lte, or, isNull } from "drizzle-orm";
 import type {
   CreateTaskInput,
   UpdateTaskInput,
@@ -25,7 +25,12 @@ export function listTasks(filters: TaskFilters = {}): Task[] {
     conditions.push(eq(tasks.priority, filters.priority));
   }
   if (filters.due_before) {
-    conditions.push(lte(tasks.due_date, filters.due_before));
+    // Tasks without a due_date should NOT be silently hidden just because
+    // the caller asked for "due before X". Include them alongside dated
+    // tasks that are due on or before the cutoff.
+    conditions.push(
+      or(isNull(tasks.due_date), lte(tasks.due_date, filters.due_before))!
+    );
   }
 
   if (conditions.length === 0) {
@@ -43,6 +48,7 @@ export function createTask(input: CreateTaskInput): Task {
       description: input.description ?? null,
       priority: input.priority ?? "medium",
       due_date: input.due_date ?? null,
+      reminder_at: input.reminder_at ?? null,
     })
     .returning()
     .all();

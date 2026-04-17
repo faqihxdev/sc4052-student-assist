@@ -76,11 +76,12 @@ app.get("/google/callback", async (c) => {
 app.delete("/google", (c) => {
   const deleted = deleteSetting("google_oauth_token");
 
-  if (!deleted) {
-    throw new AppError(404, "No Google account connected");
-  }
-
-  return c.json({ message: "Google account disconnected" });
+  return c.json({
+    message: deleted
+      ? "Google account disconnected"
+      : "No Google account was connected",
+    alreadyDisconnected: !deleted,
+  });
 });
 
 app.get("/google/status", (c) => {

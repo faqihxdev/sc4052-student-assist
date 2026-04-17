@@ -9,6 +9,7 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;
+  reminder_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -18,6 +19,7 @@ export interface CreateTaskInput {
   description?: string;
   priority?: TaskPriority;
   due_date?: string;
+  reminder_at?: string;
 }
 
 export interface UpdateTaskInput {
@@ -26,6 +28,7 @@ export interface UpdateTaskInput {
   status?: TaskStatus;
   priority?: TaskPriority;
   due_date?: string;
+  reminder_at?: string | null;
 }
 
 export interface Setting {
@@ -66,14 +69,32 @@ export interface CardData {
   data: unknown;
 }
 
+export type ToolDomain = "calendar" | "tasks" | "github" | "news" | "weather";
+
 export type ChatStreamEvent =
   | { type: "step-start" }
-  | { type: "tool-call"; toolName: string; args: unknown }
-  | { type: "tool-result"; toolName: string; result: unknown }
-  | { type: "card"; card: CardData }
   | { type: "step-finish" }
-  | { type: "text-delta"; text: string }
-  | { type: "done"; services_called: string[]; traces: ApiTrace[]; cards: CardData[] }
+  | { type: "text-start"; id: string }
+  | { type: "text-delta"; id: string; text: string }
+  | { type: "text-end"; id: string }
+  | {
+      type: "tool-call";
+      toolCallId: string;
+      toolName: string;
+      input: unknown;
+    }
+  | {
+      type: "tool-result";
+      toolCallId: string;
+      toolName: string;
+      output: unknown;
+    }
+  | { type: "card"; toolCallId: string; card: CardData }
+  | {
+      type: "done";
+      services_called: string[];
+      traces: ApiTrace[];
+    }
   | { type: "error"; message: string };
 
 export interface HealthResponse {
