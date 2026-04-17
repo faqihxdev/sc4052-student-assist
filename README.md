@@ -4,8 +4,6 @@
 
 <p align="center">
   <img src="docs/hero.png" alt="StudentAssist chat interface" width="900">
-  <br>
-  <sub><i>Place a screenshot at <code>docs/hero.png</code>. Suggested shot: the chat view on a common prompt such as &ldquo;what does my day look like?&rdquo;.</i></sub>
 </p>
 
 Built for **SC4052 Cloud Computing** at the College of Computing and Data Science (CCDS), NTU. The project is a response to Topic 2 (Personal Assistant-as-a-Service) and is designed as a security-conscious alternative to the OpenClaw family of agents.
@@ -26,8 +24,6 @@ Built for **SC4052 Cloud Computing** at the College of Computing and Data Scienc
 
 <p align="center">
   <img src="docs/architecture.png" alt="StudentAssist architecture diagram" width="900">
-  <br>
-  <sub><i>Place the architecture diagram at <code>docs/architecture.png</code>.</i></sub>
 </p>
 
 The UI streams from the orchestrator over Server-Sent Events. Before invoking any service the orchestrator consults the meta-tool `list_tools_for_domain`, which returns the Zod specifications for just the tools in that domain. Each service fronts its own external API or local database with its own authentication method.
