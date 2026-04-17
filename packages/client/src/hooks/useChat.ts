@@ -46,6 +46,8 @@ export const TOOL_SERVICE_MAP: Record<string, string> = {
   get_calendar_events: "Calendar",
   find_free_time: "Calendar",
   create_calendar_event: "Calendar",
+  update_calendar_event: "Calendar",
+  delete_calendar_event: "Calendar",
   list_tasks: "Tasks",
   create_task: "Tasks",
   update_task: "Tasks",
@@ -54,6 +56,7 @@ export const TOOL_SERVICE_MAP: Record<string, string> = {
   get_assigned_issues: "GitHub",
   get_top_news: "News",
   search_news: "News",
+  read_article: "News",
   get_current_weather: "Weather",
   get_weather_forecast: "Weather",
 };

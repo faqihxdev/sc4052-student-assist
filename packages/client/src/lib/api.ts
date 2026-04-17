@@ -53,6 +53,40 @@ export async function fetchTasks(): Promise<Task[]> {
   return apiFetch<Task[]>("/tasks");
 }
 
+export interface DemoConfigureResult {
+  tasks: { reseeded: number };
+  calendar: {
+    applied: boolean;
+    reason?: string;
+    kept: number;
+    added: number;
+    removed: number;
+  };
+}
+
+export interface DemoRemoveResult {
+  tasks: { wiped: number };
+  calendar: {
+    applied: boolean;
+    reason?: string;
+    removed: number;
+  };
+}
+
+export async function configureDemoState(): Promise<DemoConfigureResult> {
+  return apiFetch<DemoConfigureResult>("/demo/configure", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function removeDemoState(): Promise<DemoRemoveResult> {
+  return apiFetch<DemoRemoveResult>("/demo/remove", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
 export async function patchTask(
   id: number,
   patch: { status?: "pending" | "in_progress" | "completed" }

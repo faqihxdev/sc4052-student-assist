@@ -16,7 +16,9 @@ import {
   EyeOff,
   AlertCircle,
   Check,
+  FlaskConical,
 } from "lucide-react";
+import { NavLink } from "react-router-dom";
 import { useSettings } from "../hooks/useSettings";
 import { getGoogleAuthUrl } from "../lib/api";
 
@@ -100,8 +102,20 @@ export default function SettingsPage() {
 
       <div className="mb-6 flex items-center gap-3">
         <Settings className="h-6 w-6 text-[var(--color-text-secondary)]" />
-        <div>
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Settings</h1>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
+              Settings
+            </h1>
+            <NavLink
+              to="/demo"
+              title="Demo state"
+              aria-label="Demo state"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]"
+            >
+              <FlaskConical className="h-4 w-4" />
+            </NavLink>
+          </div>
           <p className="text-sm text-[var(--color-text-muted)]">
             Connect your services to get started
           </p>
@@ -431,3 +445,4 @@ function BuiltInCard({
     </div>
   );
 }
+

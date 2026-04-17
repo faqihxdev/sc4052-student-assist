@@ -1,4 +1,9 @@
-import type { CalendarEvent, FreeBusyResult, CreateEventInput } from "../services/calendar.service";
+import type {
+  CalendarEvent,
+  FreeBusyResult,
+  CreateEventInput,
+  UpdateEventInput,
+} from "../services/calendar.service";
 import type { GitHubRepo, RepoActivity, GitHubIssue } from "../services/github.service";
 import type { CurrentWeather, Forecast } from "../services/weather.service";
 
@@ -100,6 +105,27 @@ export function getMockCreateEvent(input: CreateEventInput): CalendarEvent {
     html_link: "#",
     status: "confirmed",
   };
+}
+
+export function getMockUpdateEvent(
+  id: string,
+  input: UpdateEventInput
+): CalendarEvent {
+  return {
+    id,
+    summary: input.summary ?? "Updated mock event",
+    description: input.description ?? null,
+    location: input.location ?? null,
+    start: input.start ?? today(9, 0),
+    end: input.end ?? today(10, 0),
+    all_day: false,
+    html_link: "#",
+    status: "confirmed",
+  };
+}
+
+export function getMockDeleteEvent(id: string): { id: string } {
+  return { id };
 }
 
 // ── GitHub mock data ──────────────────────────────────────────────

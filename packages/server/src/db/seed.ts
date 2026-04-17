@@ -1,58 +1,58 @@
 import { db } from "./index";
 import { tasks } from "./schema";
 
+/**
+ * ── Canonical demo state ────────────────────────────────────────────────
+ * Task fixtures that the live demo script assumes. Each task is chosen so
+ * that at least one demo scenario exercises it. Titles intentionally span
+ * multiple student-life areas (academic, code, admin, personal) so the
+ * "showcase of multi-API composition" framing is obvious from a glance at
+ * the task list, rather than being tied to one persona.
+ *
+ * Kept short (6 items) so the agent's filtered list_tasks calls are easy
+ * to read on screen. If you change this, update DEMO.md and the
+ * Illustrative Examples section of the report.
+ * ───────────────────────────────────────────────────────────────────────
+ */
+
 function daysFromNow(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
   return d.toISOString().split("T")[0];
 }
 
-const DEMO_TASKS = [
+export const DEMO_TASKS = [
   {
-    title: "Submit Cloud Computing final report",
-    description: "CZ4052 — 15-page report covering architecture, implementation, and security analysis",
-    status: "pending" as const,
-    priority: "high" as const,
-    due_date: daysFromNow(5),
-  },
-  {
-    title: "Review PR #12 — Frontend chat UI",
-    description: "Review the streaming chat interface pull request on cloud-computing-project",
-    status: "in_progress" as const,
-    priority: "medium" as const,
-    due_date: daysFromNow(1),
-  },
-  {
-    title: "Prepare SC3000 AI presentation slides",
-    description: "Group presentation on reinforcement learning project — 15 min slot",
+    title: "Submit Algorithms problem set 4",
+    description: "Trees, heaps, and amortized analysis write-up",
     status: "pending" as const,
     priority: "high" as const,
     due_date: daysFromNow(3),
   },
   {
-    title: "Fix weather card night mode icons",
-    description: "GitHub issue #7 — weather card shows sun icon at night",
+    title: "Prepare Networks module presentation",
+    description: "Group slides on TCP congestion control — 15 min slot",
     status: "pending" as const,
-    priority: "low" as const,
-    due_date: daysFromNow(7),
+    priority: "high" as const,
+    due_date: daysFromNow(5),
   },
   {
-    title: "Read Chapter 12: Container Orchestration",
-    description: "CZ4052 textbook — Kubernetes and Docker Swarm comparison",
+    title: "Review PR #12 — streaming chat UI",
+    description: "Code review on studentassist-platform repo",
+    status: "in_progress" as const,
+    priority: "medium" as const,
+    due_date: daysFromNow(1),
+  },
+  {
+    title: "Read Chapter 12 — Graph theory basics",
+    description: "BFS/DFS refresher and connectivity proofs",
     status: "completed" as const,
     priority: "medium" as const,
     due_date: daysFromNow(-1),
   },
   {
-    title: "TA grading — CZ2005 Assignment 3",
-    description: "Grade 45 student submissions for Operating Systems assignment",
-    status: "pending" as const,
-    priority: "medium" as const,
-    due_date: daysFromNow(2),
-  },
-  {
-    title: "Set up CI/CD with GitHub Actions",
-    description: "Add automated testing and Docker build to cloud-computing-project",
+    title: "Set up CI with GitHub Actions",
+    description: "Add automated tests and Docker build",
     status: "pending" as const,
     priority: "low" as const,
     due_date: daysFromNow(10),
@@ -66,13 +66,20 @@ const DEMO_TASKS = [
   },
 ];
 
-export function seedDemoTasks() {
-  const existing = db.select().from(tasks).all();
-  if (existing.length > 0) {
-    return;
+/**
+ * Seed the canonical task set. If `force` is true, wipes existing tasks
+ * first (used by the "Reset demo state" button). Otherwise only seeds when
+ * the table is empty, so normal dev restarts don't stomp user tasks.
+ */
+export function seedDemoTasks(force = false) {
+  if (force) {
+    db.delete(tasks).run();
+  } else {
+    const existing = db.select().from(tasks).all();
+    if (existing.length > 0) return;
   }
 
-  console.log("Seeding demo tasks...");
+  console.log(force ? "Resetting demo tasks..." : "Seeding demo tasks...");
   for (const task of DEMO_TASKS) {
     db.insert(tasks)
       .values({
@@ -84,5 +91,5 @@ export function seedDemoTasks() {
       })
       .run();
   }
-  console.log(`Seeded ${DEMO_TASKS.length} demo tasks`);
+  console.log(`  -> ${DEMO_TASKS.length} demo tasks written`);
 }

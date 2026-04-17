@@ -7,7 +7,70 @@ import {
   getMockEvents,
   getMockFreeBusy,
   getMockCreateEvent,
+  getMockUpdateEvent,
+  getMockDeleteEvent,
 } from "../lib/mock-data";
+
+/**
+ * Google's Calendar API requires either (a) an ISO datetime with a timezone
+ * offset (e.g. "2026-04-18T09:00:00+08:00") or (b) a naive datetime plus an
+ * explicit `timeZone` field. LLMs reliably produce (a) only when they know
+ * the user's offset — which they don't. So we accept naive ISO strings from
+ * the agent and attach our default IANA zone on the way out.
+ */
+function hasTimezoneSuffix(iso: string): boolean {
+  return /Z$|[+-]\d{2}:?\d{2}$/.test(iso.trim());
+}
+
+function toEventTime(iso: string): { dateTime: string; timeZone?: string } {
+  if (hasTimezoneSuffix(iso)) return { dateTime: iso };
+  return { dateTime: iso, timeZone: config.defaultTimezone };
+}
+
+/**
+ * Return an offset string like "+08:00" / "-04:00" for the given IANA zone
+ * at the given instant. Relies on Intl rather than a hardcoded table so it
+ * handles DST correctly.
+ */
+function offsetFor(instant: Date, timeZone: string): string {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    timeZoneName: "longOffset",
+  });
+  const name =
+    dtf.formatToParts(instant).find((p) => p.type === "timeZoneName")?.value ??
+    "GMT+00:00";
+  const m = name.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+  if (!m) return "+00:00";
+  const [, sign, hh, mm] = m;
+  return `${sign}${hh.padStart(2, "0")}:${mm ?? "00"}`;
+}
+
+/**
+ * Google's `events.list` requires `timeMin`/`timeMax` to be full RFC3339 with
+ * a timezone offset (unlike `events.insert` which has a separate `timeZone`
+ * field). Bare dates or naive datetimes from the LLM would 400. We treat a
+ * naive input as wall-clock time in `defaultTimezone` and append the offset.
+ */
+function normalizeRangeTime(iso: string): string {
+  const trimmed = iso.trim();
+  if (hasTimezoneSuffix(trimmed)) return trimmed;
+
+  // Bare date "YYYY-MM-DD" → start of that day (midnight).
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+    ? `${trimmed}T00:00:00`
+    : trimmed;
+
+  // Parse as UTC (best-effort) to pick an instant for offset lookup. The
+  // offset for a given wall-clock is the same ~24h-band either way unless
+  // the user picked a DST crossover, which we accept as out of scope.
+  const instant = new Date(`${normalized}Z`);
+  const offset = offsetFor(
+    Number.isNaN(instant.getTime()) ? new Date() : instant,
+    config.defaultTimezone
+  );
+  return `${normalized}${offset}`;
+}
 
 /**
  * Detects Google's "invalid_grant" error (refresh token expired/revoked) and
@@ -124,8 +187,8 @@ export async function listEvents(
       maxResults,
     };
 
-    if (timeMin) params.timeMin = timeMin;
-    if (timeMax) params.timeMax = timeMax;
+    if (timeMin) params.timeMin = normalizeRangeTime(timeMin);
+    if (timeMax) params.timeMax = normalizeRangeTime(timeMax);
 
     const res = await calendar.events.list(params);
     return (res.data.items ?? []).map(mapEvent);
@@ -244,11 +307,56 @@ export async function createEvent(input: CreateEventInput): Promise<CalendarEven
         summary: input.summary,
         description: input.description,
         location: input.location,
-        start: { dateTime: input.start },
-        end: { dateTime: input.end },
+        start: toEventTime(input.start),
+        end: toEventTime(input.end),
       },
     });
 
     return mapEvent(res.data);
+  });
+}
+
+export interface UpdateEventInput {
+  summary?: string;
+  description?: string | null;
+  location?: string | null;
+  start?: string;
+  end?: string;
+}
+
+export async function updateEvent(
+  id: string,
+  input: UpdateEventInput
+): Promise<CalendarEvent> {
+  if (useMockCalendar()) return getMockUpdateEvent(id, input);
+
+  return withAuthHandling(async () => {
+    const calendar = getAuthenticatedCalendar();
+
+    const body: calendar_v3.Schema$Event = {};
+    if (input.summary !== undefined) body.summary = input.summary;
+    if (input.description !== undefined) body.description = input.description ?? undefined;
+    if (input.location !== undefined) body.location = input.location ?? undefined;
+    if (input.start) body.start = toEventTime(input.start);
+    if (input.end) body.end = toEventTime(input.end);
+
+    // `patch` does a partial update — any field we don't send is preserved.
+    const res = await calendar.events.patch({
+      calendarId: "primary",
+      eventId: id,
+      requestBody: body,
+    });
+
+    return mapEvent(res.data);
+  });
+}
+
+export async function deleteEvent(id: string): Promise<{ id: string }> {
+  if (useMockCalendar()) return getMockDeleteEvent(id);
+
+  return withAuthHandling(async () => {
+    const calendar = getAuthenticatedCalendar();
+    await calendar.events.delete({ calendarId: "primary", eventId: id });
+    return { id };
   });
 }

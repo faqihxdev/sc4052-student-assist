@@ -28,6 +28,10 @@ export const config = {
 
   openweathermapApiKey: envOptional("OPENWEATHERMAP_API_KEY"),
 
+  // IANA timezone used when the LLM hands us a naive ISO datetime (no offset).
+  // Match weather's default so "tomorrow 9am" means the same thing across tools.
+  defaultTimezone: env("DEFAULT_TIMEZONE", "Asia/Singapore"),
+
   mockMode: (envOptional("MOCK_MODE") ?? "false").toLowerCase() === "true",
 
   nodeEnv: env("NODE_ENV", "development"),

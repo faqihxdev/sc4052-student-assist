@@ -13,6 +13,7 @@ import TaskCard from "../cards/TaskCard";
 import GitHubCard from "../cards/GitHubCard";
 import NewsCard from "../cards/NewsCard";
 import WeatherCard from "../cards/WeatherCard";
+import ArticleCard from "../cards/ArticleCard";
 
 const CARD_COMPONENT: Record<string, React.ComponentType<{ data: unknown }>> = {
   calendar: CalendarCard,
@@ -20,6 +21,7 @@ const CARD_COMPONENT: Record<string, React.ComponentType<{ data: unknown }>> = {
   github: GitHubCard,
   news: NewsCard,
   weather: WeatherCard,
+  article: ArticleCard,
 };
 
 const SERVICE_ICONS: Record<string, string> = {

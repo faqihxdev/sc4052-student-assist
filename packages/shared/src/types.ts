@@ -65,7 +65,7 @@ export interface ChatResponse {
 }
 
 export interface CardData {
-  type: "calendar" | "tasks" | "github" | "news" | "weather";
+  type: "calendar" | "tasks" | "github" | "news" | "weather" | "article";
   data: unknown;
 }
 

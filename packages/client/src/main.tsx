@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App";
 import ChatPage from "./pages/ChatPage";
 import SettingsPage from "./pages/SettingsPage";
+import DemoPage from "./pages/DemoPage";
 import "./styles/globals.css";
 
 const router = createBrowserRouter([
@@ -13,6 +14,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <ChatPage /> },
       { path: "chat", element: <ChatPage /> },
+      { path: "demo", element: <DemoPage /> },
       { path: "settings", element: <SettingsPage /> },
     ],
   },

@@ -13,6 +13,7 @@ import settingsRoutes from "./routes/settings";
 import authRoutes from "./routes/auth";
 import calendarRoutes from "./routes/calendar";
 import chatRoutes from "./routes/chat";
+import demoRoutes from "./routes/demo";
 
 const app = new Hono();
 
@@ -43,6 +44,7 @@ app.route("/api/v1/settings", settingsRoutes);
 app.route("/api/v1/auth", authRoutes);
 app.route("/api/v1/calendar", calendarRoutes);
 app.route("/api/v1/chat", chatRoutes);
+app.route("/api/v1/demo", demoRoutes);
 
 app.onError((err, c) => handleError(err, c));
 

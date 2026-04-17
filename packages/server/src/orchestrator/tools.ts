@@ -14,6 +14,7 @@ import {
 import {
   getTopStories,
   searchStories,
+  readArticle,
 } from "../services/news.service";
 import {
   listUserRepos,
@@ -25,6 +26,8 @@ import {
   getTodaysEvents,
   getFreeBusy,
   createEvent,
+  updateEvent,
+  deleteEvent,
 } from "../services/calendar.service";
 
 const traces: ApiTrace[] = [];
@@ -89,10 +92,12 @@ export const DOMAIN_TOOLS: Record<ToolDomain, string[]> = {
     "get_calendar_events",
     "find_free_time",
     "create_calendar_event",
+    "update_calendar_event",
+    "delete_calendar_event",
   ],
   tasks: ["list_tasks", "create_task", "update_task"],
   github: ["get_github_repos", "get_repo_activity", "get_assigned_issues"],
-  news: ["get_top_news", "search_news"],
+  news: ["get_top_news", "search_news", "read_article"],
   weather: ["get_current_weather", "get_weather_forecast"],
 };
 
@@ -105,10 +110,10 @@ export const META_TOOL_NAME = "list_tools_for_domain";
 
 const DOMAIN_BLURBS: Record<ToolDomain, string> = {
   calendar:
-    "View today's schedule, list events by date range, find free time, create events.",
+    "View today's schedule, list events by date range, find free time, create/edit/delete events.",
   tasks: "List, create, and update tasks with priorities and due dates.",
   github: "List repos, view repo activity, see assigned issues.",
-  news: "Get top HackerNews stories or search by keyword.",
+  news: "Get top HackerNews stories, search by keyword, or read an article's full text so you can summarize it.",
   weather: "Current weather and 5-day forecast for any city.",
 };
 
@@ -141,9 +146,23 @@ function domainSpec(domain: ToolDomain): {
       },
       {
         name: "create_calendar_event",
-        description: "Create a new calendar event.",
+        description:
+          "Create a new calendar event. Pass naive ISO datetimes like '2026-04-18T09:00:00' — the server attaches the user's timezone.",
         input:
           "{ summary, start: ISO-8601, end: ISO-8601, description?, location? }",
+      },
+      {
+        name: "update_calendar_event",
+        description:
+          "Update an existing event (partial patch). Get the event_id from get_todays_schedule or get_calendar_events first.",
+        input:
+          "{ event_id, summary?, description?, location?, start?, end? }",
+      },
+      {
+        name: "delete_calendar_event",
+        description:
+          "Delete an event. Get the event_id from get_todays_schedule or get_calendar_events first.",
+        input: "{ event_id }",
       },
     ],
     tasks: [
@@ -197,6 +216,12 @@ function domainSpec(domain: ToolDomain): {
         name: "search_news",
         description: "Search HackerNews by keyword.",
         input: "{ query, limit? }",
+      },
+      {
+        name: "read_article",
+        description:
+          "Fetch an article's full text so you can TL;DR / answer questions about it. Prefer passing story_id from a get_top_news/search_news result.",
+        input: "{ story_id? , url? }",
       },
     ],
     weather: [
@@ -293,11 +318,20 @@ export const allTools = {
   }),
 
   create_calendar_event: tool({
-    description: "Create a new calendar event",
+    description:
+      "Create a new calendar event. Pass naive ISO datetimes like '2026-04-18T09:00:00' (no Z, no offset) — the server attaches the user's default timezone. Including an offset like '-04:00' also works but is unnecessary.",
     inputSchema: z.object({
       summary: z.string().describe("Event title"),
-      start: z.string().describe("Start time ISO 8601"),
-      end: z.string().describe("End time ISO 8601"),
+      start: z
+        .string()
+        .describe(
+          "Start time as ISO 8601, e.g. '2026-04-18T09:00:00'. Timezone optional."
+        ),
+      end: z
+        .string()
+        .describe(
+          "End time as ISO 8601, e.g. '2026-04-18T09:30:00'. Timezone optional."
+        ),
       description: z.string().optional(),
       location: z.string().optional(),
     }),
@@ -308,6 +342,58 @@ export const allTools = {
         );
         attachCard(toolCallId, { type: "calendar", data: [event] });
         return { event };
+      } catch (err: any) {
+        return { error: err.message };
+      }
+    },
+  }),
+
+  update_calendar_event: tool({
+    description:
+      "Update an existing calendar event (partial patch — unspecified fields keep their current values). You MUST know the event_id first; discover it via get_todays_schedule or get_calendar_events. Use naive ISO for start/end; the server attaches the timezone.",
+    inputSchema: z.object({
+      event_id: z.string().describe("Google Calendar event id"),
+      summary: z.string().optional(),
+      description: z.string().optional(),
+      location: z.string().optional(),
+      start: z
+        .string()
+        .optional()
+        .describe("New start (ISO 8601, timezone optional)"),
+      end: z
+        .string()
+        .optional()
+        .describe("New end (ISO 8601, timezone optional)"),
+    }),
+    execute: async ({ event_id, ...rest }, { toolCallId }) => {
+      try {
+        const event = await traced(
+          "calendar",
+          `PATCH /events/${event_id}`,
+          () => updateEvent(event_id, rest)
+        );
+        attachCard(toolCallId, { type: "calendar", data: [event] });
+        return { event };
+      } catch (err: any) {
+        return { error: err.message };
+      }
+    },
+  }),
+
+  delete_calendar_event: tool({
+    description:
+      "Delete a calendar event by id. Discover the event_id via get_todays_schedule or get_calendar_events first. Irreversible — only call when the user clearly asked to delete/cancel.",
+    inputSchema: z.object({
+      event_id: z.string().describe("Google Calendar event id"),
+    }),
+    execute: async ({ event_id }, { toolCallId: _ }) => {
+      try {
+        const result = await traced(
+          "calendar",
+          `DELETE /events/${event_id}`,
+          () => deleteEvent(event_id)
+        );
+        return { deleted: true, event_id: result.id };
       } catch (err: any) {
         return { error: err.message };
       }
@@ -366,10 +452,10 @@ export const allTools = {
 
   create_task: tool({
     description:
-      "Create a new task. Attach a reminder in ONE of two ways:\n" +
-      "- RELATIVE ('in X minutes/seconds'): pass `remind_in_minutes` only. DO NOT also compute `reminder_at` — you don't know the server's current UTC time, so your computation will drift.\n" +
-      "- ABSOLUTE ('at 3pm tomorrow'): pass `reminder_at` only, as an ISO datetime.\n" +
-      "If both are passed, the server uses `remind_in_minutes` (its clock is authoritative).",
+      "Create a new task. Attach a reminder in ONE of two ways — NEVER both:\n" +
+      "- RELATIVE — user said 'in X seconds/minutes/hours from NOW' → pass `remind_in_minutes` only.\n" +
+      "- EVENT-ANCHORED or ABSOLUTE — user said 'at 3pm tomorrow', 'an hour before my 1pm meeting', 'tonight at 9', or any other reminder pegged to a wall-clock moment → pass `reminder_at` only, as a naive ISO datetime (e.g. `2026-04-18T12:00:00`, no `Z`, no offset). Compute this yourself from the event's start time (which you just fetched) and the system-prompt date. DO NOT try to express an event-anchored reminder in `remind_in_minutes` — you don't have a reliable 'minutes from now' because you don't know the server's wall clock, so a small error fires the reminder immediately.\n" +
+      "Pass EXACTLY ONE of these fields — never both. If both are somehow passed, the server prefers `reminder_at` (because event-anchored is the common case), but this is a bug path, not a feature.",
     inputSchema: z.object({
       title: z.string().describe("Task title"),
       description: z.string().optional(),
@@ -382,25 +468,36 @@ export const allTools = {
         .string()
         .optional()
         .describe(
-          "Absolute ISO datetime, e.g. '2026-04-17T15:00:00Z'. Use this ONLY for absolute times the user named. For relative requests use `remind_in_minutes` instead."
+          "Naive ISO datetime like '2026-04-18T12:00:00' (no 'Z', no offset — the server injects the user's timezone). Use this for ANY wall-clock-anchored reminder: 'at 3pm tomorrow', 'an hour before my 1pm meeting', 'tonight at 9', etc. When the reminder is tied to an event you just fetched, compute the target time here."
         ),
       remind_in_minutes: z
         .number()
         .positive()
         .optional()
         .describe(
-          "Fire the reminder this many minutes from now (fractional values OK: 0.5 = 30 seconds, 0.166 = 10 seconds). Preferred for 'remind me in X' requests."
+          "Fire the reminder this many minutes from NOW (server clock). Use this ONLY when the user explicitly said 'in X seconds/minutes/hours from now'. Never for event-anchored reminders. Fractional values OK (0.5 = 30 seconds)."
         ),
     }),
     execute: async (input, { toolCallId }) => {
       try {
         const { remind_in_minutes, reminder_at: llmReminderAt, ...rest } =
           input;
-        // Relative > absolute: the server clock is authoritative, the LLM's
-        // sense of "now" is not.
-        const reminder_at = remind_in_minutes
-          ? new Date(Date.now() + remind_in_minutes * 60_000).toISOString()
-          : llmReminderAt;
+        // Precedence: absolute `reminder_at` wins over relative `remind_in_minutes`.
+        // Event-anchored requests ("an hour before my 1pm meeting") land in
+        // `reminder_at`; if the LLM also hedges and sends a tiny
+        // `remind_in_minutes` alongside, we must not silently fire the reminder
+        // immediately. Relative is used only when `reminder_at` is absent.
+        let reminder_at: string | undefined = llmReminderAt;
+        if (!reminder_at && remind_in_minutes) {
+          reminder_at = new Date(
+            Date.now() + remind_in_minutes * 60_000
+          ).toISOString();
+        }
+        if (llmReminderAt && remind_in_minutes !== undefined) {
+          console.warn(
+            "[tasks] create_task received both reminder_at and remind_in_minutes; preferring reminder_at"
+          );
+        }
 
         const task = await traced("tasks", "POST /tasks", () =>
           createTask({ ...rest, reminder_at })
@@ -415,7 +512,7 @@ export const allTools = {
 
   update_task: tool({
     description:
-      "Update a task — mark completed, change priority, rename, set/clear reminder, etc. For reminders: use `remind_in_minutes` for relative times, `reminder_at` for absolute, or `reminder_at: null` to clear. If both are passed, `remind_in_minutes` wins.",
+      "Update a task — mark completed, change priority, rename, set/clear reminder, etc. For reminders: use `remind_in_minutes` ONLY when the user said 'in X from now'; use `reminder_at` (naive ISO like '2026-04-18T12:00:00') for any event-anchored or absolute time. Use `reminder_at: null` to clear. Pass EXACTLY ONE of the two reminder fields — never both. If both are somehow passed, the server prefers `reminder_at`.",
     inputSchema: z.object({
       id: z.number().describe("Task ID to update"),
       title: z.string().optional(),
@@ -428,21 +525,32 @@ export const allTools = {
         .nullable()
         .optional()
         .describe(
-          "Absolute ISO datetime for the reminder, or null to clear."
+          "Naive ISO datetime like '2026-04-18T12:00:00' (no 'Z', no offset — server injects TZ), or null to clear. Use this for event-anchored or absolute reminders."
         ),
       remind_in_minutes: z
         .number()
         .positive()
         .optional()
         .describe(
-          "Relative reminder in minutes from now (fractional OK)."
+          "Relative reminder in minutes from NOW. Use ONLY for explicit 'in X from now' requests, never for event-anchored reminders (fractional OK)."
         ),
     }),
     execute: async ({ id, remind_in_minutes, ...input }, { toolCallId }) => {
       try {
-        const reminder_at = remind_in_minutes
-          ? new Date(Date.now() + remind_in_minutes * 60_000).toISOString()
-          : input.reminder_at;
+        let reminder_at: string | null | undefined = input.reminder_at;
+        if (reminder_at === undefined && remind_in_minutes) {
+          reminder_at = new Date(
+            Date.now() + remind_in_minutes * 60_000
+          ).toISOString();
+        }
+        if (
+          input.reminder_at !== undefined &&
+          remind_in_minutes !== undefined
+        ) {
+          console.warn(
+            "[tasks] update_task received both reminder_at and remind_in_minutes; preferring reminder_at"
+          );
+        }
 
         const task = await traced("tasks", `PATCH /tasks/${id}`, () =>
           updateTask(id, { ...input, reminder_at })
@@ -544,6 +652,43 @@ export const allTools = {
         );
         attachCard(toolCallId, { type: "news", data: stories });
         return { stories };
+      } catch (err: any) {
+        return { error: err.message };
+      }
+    },
+  }),
+
+  read_article: tool({
+    description:
+      "Fetch the full text of a HackerNews-linked article so you can summarize it or answer questions about it. Prefer `story_id` (from get_top_news / search_news results) — that way the HN title is carried along automatically. Use `url` only if the user pasted a URL directly. After this tool returns, write the TL;DR yourself in your own words; do NOT quote the raw content back at the user.",
+    inputSchema: z.object({
+      story_id: z
+        .number()
+        .optional()
+        .describe("HackerNews item id (preferred)."),
+      url: z
+        .string()
+        .url()
+        .optional()
+        .describe("Direct article URL. Only use if story_id is unknown."),
+    }),
+    execute: async ({ story_id, url }, { toolCallId }) => {
+      if (story_id == null && !url) {
+        return {
+          error:
+            "Provide either story_id (from a news list) or url.",
+        };
+      }
+      try {
+        const article = await traced(
+          "news",
+          story_id != null
+            ? `GET /news/item/${story_id}`
+            : `GET ${url}`,
+          () => readArticle({ storyId: story_id, url })
+        );
+        attachCard(toolCallId, { type: "article", data: article });
+        return { article };
       } catch (err: any) {
         return { error: err.message };
       }
