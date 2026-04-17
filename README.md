@@ -24,26 +24,13 @@ Built for **SC4052 Cloud Computing** at the College of Computing and Data Scienc
 
 ## Architecture
 
-```
-         ┌──────────────────────────────────────────────────┐
-         │  Web UI · React + Vite · chat, cards, settings   │
-         └─────────────────────┬────────────────────────────┘
-                        POST / SSE
-         ┌─────────────────────▼────────────────────────────┐
-         │  AI Orchestrator · Vercel AI SDK · streamText()  │
-         │  stopWhen=stepCountIs(25) · activeTools per turn │
-         └─────────────────────┬────────────────────────────┘
-                      ┌────────▼────────┐
-                      │ list_tools_for_ │   (meta-tool: returns
-                      │     domain      │    Zod specs on demand)
-                      └────────┬────────┘
-      ┌───────────┬────────────┼────────────┬────────────┐
-      ▼           ▼            ▼            ▼            ▼
-  Calendar     Tasks         GitHub        News       Weather
-  (Google)   (SQLite)      (Octokit)       (HN)     (OpenWM)
-```
+<p align="center">
+  <img src="docs/architecture.png" alt="StudentAssist architecture diagram" width="900">
+  <br>
+  <sub><i>Place the architecture diagram at <code>docs/architecture.png</code>.</i></sub>
+</p>
 
-See the project report (`/report/main.pdf`) for the full TikZ diagram and design rationale.
+The UI streams from the orchestrator over Server-Sent Events. Before invoking any service the orchestrator consults the meta-tool `list_tools_for_domain`, which returns the Zod specifications for just the tools in that domain. Each service fronts its own external API or local database with its own authentication method.
 
 ## Tech stack
 
@@ -122,7 +109,7 @@ Copy `.env.example` to `.env`. All keys are read by the server; no secrets reach
 
 ## Demo mode
 
-The project ships with a dedicated demo page (logo in the Settings page header) that seeds reproducible fixtures for three demonstrations documented in `/DEMO.md`:
+The project ships with a dedicated demo page (logo in the Settings page header) that seeds reproducible fixtures for three demonstrations:
 
 1. **Parallel fan-out.** One prompt, three concurrent tool calls.
 2. **Retrieve, reason, write.** Read a news article, reason about it, conditionally schedule follow-up.
@@ -167,15 +154,8 @@ Designed as a deliberate contrast to the OpenClaw failure modes identified in Ga
 | Guardrails      | Server-owned system prompt, enforced by typed contracts    |
 | Network         | Not internet-exposed by default; runs on localhost         |
 
-## Further reading
-
-- `/report/main.pdf`: full project report (architecture, related work, demos, security)
-- `/DEMO.md`: live demo walkthrough
-- `/PROJECT_LOG.md`: engineering log
-- `/PLAN.md`: original plan and scope
-
 ## Acknowledgements
 
 Muhammad Faqih Akmal (U2322254L), CCDS, NTU. SC4052 Cloud Computing, April 2026.
 
-The architecture and terminology follow patterns popularised by the Vercel AI SDK, the Model Context Protocol, and the retrieval-augmented tool-selection literature cited in the report.
+The architecture and terminology follow patterns popularised by the Vercel AI SDK, the Model Context Protocol, and the retrieval-augmented tool-selection literature.
