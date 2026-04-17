@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { fetchTasks } from "../lib/api";
+import { fetchTasks, patchTask } from "../lib/api";
 import type { Task } from "@studentassist/shared";
 
 /**
@@ -68,6 +68,7 @@ export function useTaskReminders() {
 
         const timer = window.setTimeout(() => {
           fireNotification(task);
+          completeAfterReminder(task);
         }, safeDelay);
 
         scheduled.set(key, timer);
@@ -89,16 +90,39 @@ export function useTaskReminders() {
       }
     }
 
+    /**
+     * After a reminder fires, mark the task as completed. This is a
+     * product decision, not a data one: reminder-only tasks (created via
+     * `remind_in_minutes`) are functionally one-shot alarms, and once
+     * they've rung the user doesn't want to see them lingering in
+     * "pending" forever. If the task has real follow-up work the user can
+     * just reopen it via chat. Failures are swallowed (e.g. task deleted
+     * meanwhile) so a missed patch never kills the hook.
+     */
+    async function completeAfterReminder(task: Task) {
+      if (!task.id) return;
+      if (task.status === "completed") return;
+      try {
+        await patchTask(task.id, { status: "completed" });
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tasks-updated"));
+        }
+      } catch {
+        /* noop */
+      }
+    }
+
     function fireNotification(task: Task) {
       if (typeof Notification === "undefined") return;
       if (Notification.permission !== "granted") return;
 
-      const body =
-        task.description?.trim() ||
-        (task.due_date ? `Due ${task.due_date}` : "Task reminder");
+      const bodyParts: string[] = ["Task reminder"];
+      if (task.description?.trim()) bodyParts.push(task.description.trim());
+      else if (task.due_date) bodyParts.push(`Due ${task.due_date}`);
+      const body = bodyParts.join(" · ");
 
       try {
-        const n = new Notification(`Reminder: ${task.title}`, {
+        const n = new Notification(`StudentAssist: ${task.title}`, {
           body,
           tag: `task-${task.id}`,
           requireInteraction: false,

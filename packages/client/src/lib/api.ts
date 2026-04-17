@@ -53,6 +53,16 @@ export async function fetchTasks(): Promise<Task[]> {
   return apiFetch<Task[]>("/tasks");
 }
 
+export async function patchTask(
+  id: number,
+  patch: { status?: "pending" | "in_progress" | "completed" }
+): Promise<Task> {
+  return apiFetch<Task>(`/tasks/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
 export async function* streamChat(
   request: ChatRequest,
   signal?: AbortSignal

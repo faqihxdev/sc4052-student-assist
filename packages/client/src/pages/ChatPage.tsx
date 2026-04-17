@@ -12,12 +12,36 @@ import { useChat } from "../hooks/useChat";
 import ChatInput from "../components/chat/ChatInput";
 import MessageBubble from "../components/chat/MessageBubble";
 
-const SUGGESTIONS = [
-  { text: "What's my day looking like?", icon: Calendar },
-  { text: "Show my pending tasks", icon: CheckSquare },
-  { text: "Summarize my GitHub activity", icon: Github },
-  { text: "What's trending in tech?", icon: Newspaper },
-  { text: "How's the weather today?", icon: Cloud },
+const SUGGESTIONS: {
+  label: string;
+  prompt: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  {
+    label: "My day",
+    prompt: "What's my day looking like?",
+    icon: Calendar,
+  },
+  {
+    label: "Pending tasks",
+    prompt: "Show my pending tasks",
+    icon: CheckSquare,
+  },
+  {
+    label: "GitHub",
+    prompt: "Summarize my GitHub activity",
+    icon: Github,
+  },
+  {
+    label: "Tech news",
+    prompt: "What's trending in tech?",
+    icon: Newspaper,
+  },
+  {
+    label: "Weather",
+    prompt: "How's the weather today?",
+    icon: Cloud,
+  },
 ];
 
 export default function ChatPage() {
@@ -89,17 +113,18 @@ function WelcomeScreen({
         Your AI assistant for managing classes, tasks, GitHub projects, news,
         and weather. Try one of these to get started:
       </p>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 max-w-2xl">
+      <div className="flex flex-wrap justify-center gap-2 max-w-3xl">
         {SUGGESTIONS.map((s) => {
           const Icon = s.icon;
           return (
             <button
-              key={s.text}
-              onClick={() => onSuggestionClick(s.text)}
-              className="group flex items-center gap-3 rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-raised)] px-4 py-3 text-left text-sm text-[var(--color-text-secondary)] transition-all hover:border-[var(--color-border-accent)] hover:bg-[var(--color-amber-subtle)] hover:text-[var(--color-amber-accent)]"
+              key={s.label}
+              onClick={() => onSuggestionClick(s.prompt)}
+              title={s.prompt}
+              className="group inline-flex items-center gap-2 rounded-full border border-[var(--color-border-default)] bg-[var(--color-surface-raised)] px-3.5 py-2 text-sm text-[var(--color-text-secondary)] whitespace-nowrap transition-all hover:border-[var(--color-border-accent)] hover:bg-[var(--color-amber-subtle)] hover:text-[var(--color-amber-accent)]"
             >
-              <Icon className="h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-colors group-hover:text-[var(--color-amber-accent)]" />
-              <span>{s.text}</span>
+              <Icon className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)] transition-colors group-hover:text-[var(--color-amber-accent)]" />
+              <span>{s.label}</span>
             </button>
           );
         })}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Loader2,
   Check,
@@ -40,6 +40,22 @@ interface Props {
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * Ticks every `intervalMs` while `active` is true, returning the elapsed ms
+ * since `startedAt`. Lets us render a live countup next to running tools
+ * without re-rendering the entire message list.
+ */
+function useElapsed(startedAt: number, active: boolean, intervalMs = 100): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [active, intervalMs]);
+  return Math.max(0, now - startedAt);
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -110,8 +126,12 @@ export default function ToolSegment({ segment }: Props) {
   const icon = SERVICE_ICONS[service] ?? "🔧";
   const [open, setOpen] = useState(false);
 
+  const isLoading = segment.status === "loading";
+  const liveElapsedMs = useElapsed(segment.startedAt, isLoading);
+  const displayedMs = isLoading ? liveElapsedMs : segment.durationMs;
+
   const canExpand =
-    segment.status !== "loading" &&
+    !isLoading &&
     (segment.output !== undefined || segment.card !== undefined);
 
   const CardComp = segment.card
@@ -160,9 +180,15 @@ export default function ToolSegment({ segment }: Props) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 pl-2">
-          {segment.durationMs != null && (
-            <span className="tool-duration tabular-nums rounded-md bg-[var(--color-surface-overlay)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-muted)]">
-              {formatDuration(segment.durationMs)}
+          {displayedMs != null && (
+            <span
+              className={`tool-duration tabular-nums rounded-md px-1.5 py-0.5 text-[10px] ${
+                isLoading
+                  ? "text-[var(--color-amber-accent)] bg-[rgba(212,145,92,0.12)]"
+                  : "bg-[var(--color-surface-overlay)] text-[var(--color-text-muted)]"
+              }`}
+            >
+              {formatDuration(displayedMs)}
             </span>
           )}
           {canExpand && (

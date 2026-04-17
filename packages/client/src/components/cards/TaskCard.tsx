@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { CheckSquare, Circle, Clock, AlertTriangle, Bell } from "lucide-react";
 
 interface TaskItem {
@@ -38,11 +39,11 @@ function formatDueDate(dateStr?: string | null): string {
   return `Due in ${diffDays}d`;
 }
 
-function formatReminder(iso?: string | null): string {
+function formatReminder(iso: string | null | undefined, now: number): string {
   if (!iso) return "";
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return "";
-  const diffSec = Math.round((t - Date.now()) / 1000);
+  const diffSec = Math.round((t - now) / 1000);
   if (diffSec < -60) return "reminder missed";
   if (diffSec < 0) return "reminder now";
   if (diffSec < 60) return `in ${diffSec}s`;
@@ -56,8 +57,28 @@ function formatReminder(iso?: string | null): string {
   });
 }
 
+/**
+ * Re-render every `intervalMs` as long as `active` is true. Used to make
+ * the reminder countdown ("in 24s") tick down live on the card without
+ * having to refetch the task list.
+ */
+function useNow(active: boolean, intervalMs = 1000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [active, intervalMs]);
+  return now;
+}
+
 export default function TaskCard({ data }: TaskCardProps) {
   const tasks: TaskItem[] = Array.isArray(data) ? data : [];
+  const hasPendingReminder = tasks.some(
+    (t) => t.reminder_at && t.status !== "completed"
+  );
+  const now = useNow(hasPendingReminder);
 
   if (!tasks.length) {
     return (
@@ -95,7 +116,7 @@ export default function TaskCard({ data }: TaskCardProps) {
                   title={`Reminder at ${new Date(task.reminder_at).toLocaleString()}`}
                 >
                   <Bell className="h-3 w-3" />
-                  {formatReminder(task.reminder_at)}
+                  {formatReminder(task.reminder_at, now)}
                 </span>
               )}
               {task.due_date && (
